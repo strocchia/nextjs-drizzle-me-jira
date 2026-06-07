@@ -9,7 +9,7 @@ import {
 } from "./mock.data";
 import { db } from "@/app/db";
 import { invoices, customers } from "@/app/db/schema";
-import { eq, asc, desc, or, ilike, count } from "drizzle-orm";
+import { eq, asc, desc, or, ilike, count, sum, sql } from "drizzle-orm";
 
 export async function fetchRevenue() {
   try {
@@ -22,17 +22,16 @@ export async function fetchRevenue() {
 
 export async function fetchLatestInvoices() {
   try {
-    // const data = mockLatestInvoices;
-
     const partialLatestInvoices = db
       .select({
         id: invoices.id,
         name: customers.name,
         email: customers.email,
+        image_url: customers.image_url,
         amount: invoices.amount,
       })
       .from(invoices)
-      .leftJoin(customers, eq(invoices.customer_id, customers.id));
+      .innerJoin(customers, eq(invoices.customer_id, customers.id));
 
     const data = await partialLatestInvoices
       .orderBy(desc(invoices.date))
@@ -84,6 +83,7 @@ export async function fetchFilteredInvoices(
         customer_id: invoices.customer_id,
         name: customers.name,
         email: customers.email,
+        image_url: customers.image_url,
         amount: invoices.amount,
         date: invoices.date,
         status: invoices.status,
@@ -136,7 +136,19 @@ export async function fetchInvoicesPages(query: string) {
 
 export async function fetchInvoiceById(id: string) {
   try {
-    const data = mockInvoiceById;
+    const data = await db
+      .select({
+        id: invoices.id,
+        customer_id: invoices.customer_id,
+        name: customers.name,
+        email: customers.email,
+        amount: invoices.amount,
+        date: invoices.date,
+        status: invoices.status,
+      })
+      .from(invoices)
+      .leftJoin(customers, eq(invoices.customer_id, customers.id))
+      .where(eq(invoices.id, id));
 
     const invoice = data[0];
     return { ...invoice, amount: invoice.amount / 100 };
@@ -148,7 +160,10 @@ export async function fetchInvoiceById(id: string) {
 
 export async function fetchCustomers() {
   try {
-    const allCustomers = mockAllCustomers;
+    const allCustomers = await db
+      .select()
+      .from(customers)
+      .orderBy(asc(customers.name));
 
     return allCustomers;
   } catch (err) {
@@ -164,7 +179,28 @@ export async function fetchFilteredCustomers(
   try {
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-    const data = mockFilteredCustomersTable;
+    const data = await db
+      .select({
+        id: customers.id,
+        name: customers.name,
+        email: customers.email,
+        image_url: customers.image_url,
+        total_invoices: count(invoices.id),
+        total_pending: sql<number>`sum(CASE WHEN ${invoices.status} = 'pending' THEN ${invoices.amount} ELSE 0 END)`,
+        total_paid: sql<number>`sum(CASE WHEN ${invoices.status} = 'paid' THEN ${invoices.amount} ELSE 0 END)`,
+      })
+      .from(customers)
+      .leftJoin(invoices, eq(invoices.customer_id, customers.id))
+      .where(
+        or(
+          ilike(customers.name, `%${query}%`),
+          ilike(customers.email, `%${query}%`),
+        ),
+      )
+      .groupBy(customers.id)
+      .orderBy(asc(customers.name))
+      .offset(offset)
+      .limit(ITEMS_PER_PAGE);
 
     const filteredCustomers = data.map((customer) => ({
       ...customer,
@@ -181,7 +217,22 @@ export async function fetchFilteredCustomers(
 
 export async function fetchCustomersPages(query: string) {
   try {
-    const totalPages = 12;
+    // const totalPages = 12;
+
+    const data = await db
+      .select({
+        count: count(customers.id),
+      })
+      .from(customers)
+      .where(
+        or(
+          ilike(customers.name, `%${query}%`),
+          ilike(customers.email, `%${query}%`),
+        ),
+      );
+
+    const totalPages = Math.ceil(data[0].count / ITEMS_PER_PAGE);
+
     return totalPages;
   } catch (error) {
     console.error("Database Error:", error);

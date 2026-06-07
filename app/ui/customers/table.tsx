@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { fetchFilteredCustomers } from '@/app/lib/data';
-import { DeleteCustomer } from '@/app/ui/button';
+import Link from "next/link";
+import Image from "next/image";
+import { EyeIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { fetchFilteredCustomers } from "@/app/lib/data";
+import { DeleteCustomer } from "@/app/ui/button";
 
 export default async function CustomersTable({
   query,
-  currentPage
+  currentPage,
 }: {
   query: string;
   currentPage: number;
@@ -29,7 +29,7 @@ export default async function CustomersTable({
                       <div className="mb-2 flex items-center">
                         <div className="flex items-center gap-3">
                           <Image
-                            src={customer.image_url}
+                            src={(customer.image_url as string) ?? null}
                             className="rounded-full"
                             alt={`${customer.name}'s profile picture`}
                             width={28}
@@ -38,9 +38,7 @@ export default async function CustomersTable({
                           <p>{customer.name}</p>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        {customer.email}
-                      </p>
+                      <p className="text-sm text-gray-500">{customer.email}</p>
                     </div>
                   </div>
                   <div className="flex w-full items-center justify-between border-b py-5">
@@ -77,7 +75,10 @@ export default async function CustomersTable({
                   <th scope="col" className="px-4 py-5 font-medium">
                     Total Paid
                   </th>
-                  <th scope="col" className="relative py-3 pl-6 pr-3 text-center font-medium">
+                  <th
+                    scope="col"
+                    className="relative py-3 pl-6 pr-3 text-center font-medium"
+                  >
                     Actions
                     <span className="sr-only">Edit</span>
                   </th>
@@ -85,7 +86,7 @@ export default async function CustomersTable({
               </thead>
 
               <tbody className="bg-white divide-y divide-gray-200 text-gray-900">
-                {customers.map((customer: any ) => (
+                {customers.map((customer: any) => (
                   <tr key={customer.id} className="group">
                     <td className="whitespace-nowrap bg-white py-5 pl-4 pr-3 text-sm text-black group-first-of-type:rounded-md group-last-of-type:rounded-md sm:pl-6">
                       <div className="flex items-center gap-3">
@@ -125,8 +126,7 @@ export default async function CustomersTable({
                         >
                           <PencilIcon className="w-5" />
                         </Link>
-                        <DeleteCustomer id={customer?.id}
-                        >
+                        <DeleteCustomer id={customer?.id}>
                           <span className="sr-only">Delete</span>
                           <TrashIcon className="w-5 stroke-gray-50" />
                         </DeleteCustomer>
@@ -141,4 +141,4 @@ export default async function CustomersTable({
       </div>
     </div>
   );
-};
+}

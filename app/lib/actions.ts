@@ -1,4 +1,4 @@
-"use server"
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { Customer, Invoice, NewCustomer, NewInvoice } from "./zod-types";
@@ -23,6 +23,8 @@ export const updateInvoice = async (formData: Invoice) => {
     ...formData,
     amount: amountInCents,
   };
+
+  console.log(updatedData);
 
   revalidatePath("/dashboard/invoices");
 };
