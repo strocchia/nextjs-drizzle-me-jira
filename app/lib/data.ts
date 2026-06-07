@@ -1,4 +1,3 @@
-
 import { formatCurrency } from "./utils";
 import {
   mockAllCustomers,
@@ -6,8 +5,11 @@ import {
   mockFilteredInvoices,
   mockInvoiceById,
   mockLatestInvoices,
-  mockRevenues
+  mockRevenues,
 } from "./mock.data";
+import { db } from "@/app/db";
+import { invoices, customers } from "@/app/db/schema";
+import { eq, asc, desc, or, ilike, count } from "drizzle-orm";
 
 export async function fetchRevenue() {
   try {
@@ -20,7 +22,21 @@ export async function fetchRevenue() {
 
 export async function fetchLatestInvoices() {
   try {
-    const data = mockLatestInvoices;
+    // const data = mockLatestInvoices;
+
+    const partialLatestInvoices = db
+      .select({
+        id: invoices.id,
+        name: customers.name,
+        email: customers.email,
+        amount: invoices.amount,
+      })
+      .from(invoices)
+      .leftJoin(customers, eq(invoices.customer_id, customers.id));
+
+    const data = await partialLatestInvoices
+      .orderBy(desc(invoices.date))
+      .limit(5);
 
     const latestInvoices = data.map((invoice) => ({
       ...invoice,
@@ -36,7 +52,6 @@ export async function fetchLatestInvoices() {
 
 export async function fetchCardData() {
   try {
-
     const numberOfInvoices = 206;
     const numberOfCustomers = 124;
     const totalPaidInvoices = "$12,342";
@@ -58,12 +73,33 @@ const ITEMS_PER_PAGE = 10;
 
 export async function fetchFilteredInvoices(
   query: string,
-  currentPage: number
+  currentPage: number,
 ) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const filteredInvoicesTable = mockFilteredInvoices;
+    const partialFilteredInvoicesTable = db
+      .select({
+        id: invoices.id,
+        customer_id: invoices.customer_id,
+        name: customers.name,
+        email: customers.email,
+        amount: invoices.amount,
+        date: invoices.date,
+        status: invoices.status,
+      })
+      .from(invoices)
+      .leftJoin(customers, eq(invoices.customer_id, customers.id));
+
+    const filteredInvoicesTable = await partialFilteredInvoicesTable
+      .where(
+        or(
+          ilike(customers.name, `%${query}%`),
+          ilike(customers.email, `%${query}%`),
+        ),
+      )
+      .offset(offset)
+      .limit(ITEMS_PER_PAGE);
 
     return filteredInvoicesTable;
   } catch (error) {
@@ -74,7 +110,23 @@ export async function fetchFilteredInvoices(
 
 export async function fetchInvoicesPages(query: string) {
   try {
-    const totalPages = 21;
+    // const totalPages = 21;
+
+    const data = await db
+      .select({
+        count: count(invoices.id),
+      })
+      .from(invoices)
+      .leftJoin(customers, eq(invoices.customer_id, customers.id))
+      .where(
+        or(
+          ilike(customers.name, `%${query}%`),
+          ilike(customers.email, `%${query}%`),
+        ),
+      );
+
+    const totalPages = Math.ceil(data[0].count / ITEMS_PER_PAGE);
+
     return totalPages;
   } catch (error) {
     console.error("Database Error:", error);
@@ -107,7 +159,7 @@ export async function fetchCustomers() {
 
 export async function fetchFilteredCustomers(
   query: string,
-  currentPage: number
+  currentPage: number,
 ) {
   try {
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
