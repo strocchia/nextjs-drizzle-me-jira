@@ -10,8 +10,14 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const enumInvoiceStatus = pgEnum("status", ["paid", "pending"]);
+export const enumInvoiceStatus = pgEnum("invoice_status", ["paid", "pending"]);
 
+export const enumTicketStatus = pgEnum("ticket_status", [
+  "backlog",
+  "todo",
+  "in_progress",
+  "done",
+]);
 export const enumPriority = pgEnum("priority", ["low", "medium", "high"]);
 
 // Users table
@@ -41,7 +47,8 @@ export const tickets = pgTable("tickets", {
   id: uuid("id").primaryKey().defaultRandom().unique(),
   name: varchar("name").notNull(),
   description: varchar("description"),
-  priority: enumPriority("priority").notNull(),
+  status: enumTicketStatus("status").notNull().default("backlog"),
+  priority: enumPriority("priority").notNull().default("medium"),
   project_id: uuid("project_id")
     .references(() => projects.id, {
       onDelete: "cascade",
@@ -96,3 +103,10 @@ export type NewCustomer = typeof customers.$inferInsert;
 
 export type Revenue = typeof revenues.$inferSelect;
 export type NewRevenue = typeof revenues.$inferInsert;
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type Ticket = typeof tickets.$inferSelect;
+export type NewTicket = typeof tickets.$inferInsert;
